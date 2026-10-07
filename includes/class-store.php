@@ -46,7 +46,9 @@ final class Store {
 			created_at datetime NOT NULL,
 			updated_at datetime NOT NULL,
 			version int unsigned NOT NULL DEFAULT 1,
+			submission_key char(64) DEFAULT NULL,
 			PRIMARY KEY  (id),
+			UNIQUE KEY submission_key (submission_key),
 			KEY contact_course (contact_id,course_type_id,course_date),
 			KEY course_expiry (course_type_id,expires_on),
 			KEY expiry (expires_on)
@@ -63,6 +65,10 @@ final class Store {
 			if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table ) ) ) !== $table ) {
 				throw new \RuntimeException( __( 'Could not create the course tables. Check database permissions.', 'jpcrm-courses' ) );
 			}
+		}
+		$submission_index = $wpdb->get_row( "SHOW INDEX FROM $records WHERE Key_name = 'submission_key'", ARRAY_A );
+		if ( ! $submission_index || 0 !== (int) $submission_index['Non_unique'] || 'submission_key' !== $submission_index['Column_name'] ) {
+			throw new \RuntimeException( __( 'Could not install duplicate submission protection. Check database ALTER permissions.', 'jpcrm-courses' ) );
 		}
 		update_option( 'jpcc_schema_version', JPCRM_COURSES_VERSION, false );
 	}
@@ -104,6 +110,13 @@ final class Store {
 		if ( $id && ! $old ) { throw new \RuntimeException( __( 'Course record not found.', 'jpcrm-courses' ) ); }
 		$contact_id = $old ? (int) $old['contact_id'] : absint( $data['contact_id'] ?? 0 );
 		CRM::require_contact( $contact_id, true );
+		$submission_key = null;
+		if ( ! $old && isset( $data['submission_token'] ) ) {
+			if ( ! is_string( $data['submission_token'] ) || ! preg_match( '/^[a-f0-9]{32}$/D', $data['submission_token'] ) ) { throw new \InvalidArgumentException( __( 'Reload the form before saving this course record.', 'jpcrm-courses' ) ); }
+			$submission_key = hash( 'sha256', get_current_user_id() . ':' . $data['submission_token'] );
+			$submitted = self::submitted_record( $submission_key, $contact_id );
+			if ( $submitted ) { return $submitted; }
+		}
 		$type = self::type( absint( $data['course_type_id'] ?? 0 ) );
 		$same_type = $old && (int) $old['course_type_id'] === (int) ( $type['id'] ?? 0 );
 		if ( ! $type || ( ! $type['active'] && ! $same_type ) ) { throw new \InvalidArgumentException( __( 'Choose an active course type.', 'jpcrm-courses' ) ); }
@@ -127,6 +140,7 @@ final class Store {
 				$result = $wpdb->update( self::table( 'records' ), $row, array( 'id' => $id, 'version' => absint( $data['version'] ?? 0 ) ) );
 				if ( 1 !== $result ) { throw new \RuntimeException( __( 'This record changed or could not be saved. Reload it before trying again.', 'jpcrm-courses' ) ); }
 			} else {
+				$row['submission_key'] = $submission_key;
 				$row['created_by'] = get_current_user_id();
 				$row['created_at'] = $row['updated_at'];
 				if ( false === $wpdb->insert( self::table( 'records' ), $row ) ) { throw new \RuntimeException( __( 'The course record could not be saved.', 'jpcrm-courses' ) ); }
@@ -135,9 +149,26 @@ final class Store {
 			if ( $certificate && $old && $old['certificate_id'] ) {
 				if ( false === $wpdb->delete( self::table( 'certificates' ), array( 'id' => $old['certificate_id'] ) ) ) { throw new \RuntimeException( __( 'Could not replace the previous certificate.', 'jpcrm-courses' ) ); }
 			}
+			Activity::saved( array_merge( $row, array( 'id' => $id, 'course_name' => $type['name'] ) ), $old );
 			self::query_or_fail( 'COMMIT' );
-		} catch ( \Throwable $e ) { $wpdb->query( 'ROLLBACK' ); throw $e; }
+		} catch ( \Throwable $e ) {
+			$wpdb->query( 'ROLLBACK' );
+			// The unique index serializes simultaneous submissions. Roll back the
+			// losing upload before returning the record committed by the first request.
+			if ( $submission_key ) {
+				$submitted = self::submitted_record( $submission_key, $contact_id );
+				if ( $submitted ) { return $submitted; }
+			}
+			throw $e;
+		}
 		return $id;
+	}
+
+	private static function submitted_record( $key, $contact_id ) {
+		global $wpdb;
+		$record = $wpdb->get_row( $wpdb->prepare( 'SELECT id, contact_id FROM ' . self::table( 'records' ) . ' WHERE submission_key = %s', $key ), ARRAY_A );
+		if ( $record && (int) $record['contact_id'] !== (int) $contact_id ) { throw new \RuntimeException( __( 'This form was already used for another contact. Reload before saving.', 'jpcrm-courses' ) ); }
+		return $record ? (int) $record['id'] : 0;
 	}
 
 	public static function delete_record( $id, $version ) {
@@ -149,6 +180,7 @@ final class Store {
 		try {
 			if ( 1 !== $wpdb->delete( self::table( 'records' ), array( 'id' => $id, 'version' => $version ) ) ) { throw new \RuntimeException( __( 'Record changed. Reload before deleting it.', 'jpcrm-courses' ) ); }
 			if ( false === $wpdb->delete( self::table( 'certificates' ), array( 'id' => $row['certificate_id'] ) ) ) { throw new \RuntimeException( __( 'Certificate deletion failed.', 'jpcrm-courses' ) ); }
+			Activity::deleted( $row );
 			self::query_or_fail( 'COMMIT' );
 		} catch ( \Throwable $e ) { $wpdb->query( 'ROLLBACK' ); throw $e; }
 	}

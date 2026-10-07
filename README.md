@@ -5,16 +5,16 @@ A standalone WordPress plugin for **Jetpack CRM 6.8.5**, with **MailPoet** audie
 ## Install
 
 1. In a staging copy of your WordPress site, activate Jetpack CRM 6.8.5 and MailPoet.
-2. Upload `dist/jetpack-crm-courses-1.0.1.zip` through **Plugins → Add Plugin → Upload Plugin**, then activate it.
-3. Open **CRM Courses → Course types**. Add **First Aid**, valid for **1 year**.
+2. Upload `dist/jetpack-crm-courses-1.0.3.zip` through **Plugins → Add Plugin → Upload Plugin**, then activate it. If replacing an existing installation, choose **Replace current with uploaded**.
+3. Open **Courses → Course types**. Add **First Aid**, valid for **1 year**.
 4. Open a CRM contact, select **Courses & certificates**, and click **Add course date**.
-5. Select the course, enter its date, and upload a PDF, JPEG or PNG certificate. The expiry is calculated when saved.
+5. Select the course, enter its date, and upload a PDF, JPEG or PNG certificate. The expiry is calculated when saved. The form stays on the contact, and saving returns to its **Courses & certificates** tab.
 
 The source folder can also be installed as `wp-content/plugins/jetpack-crm-courses/`. It requires no build step or Composer dependencies. WordPress 6.5+, PHP 7.4+, PHP Fileinfo, and an InnoDB-capable database are required. Network activation is intentionally refused; activate separately on each multisite site.
 
 ## Updates from GitHub
 
-Version **1.0.1** adds updates from this [GitHub repository](https://github.com/lewishackfath/Jetpack-CRM---Contact-enahnacements). If you already installed 1.0.0, upload the 1.0.1 ZIP once through WordPress and choose **Replace current with uploaded**. Keep the plugin active so its update checker runs. The installed directory should be `jetpack-crm-courses`; use the packaged ZIP rather than GitHub's **Code → Download ZIP** or **Source code** archives.
+Version **1.0.1** adds updates from this [GitHub repository](https://github.com/lewishackfath/Jetpack-CRM---Contact-enahnacements). If you already installed 1.0.0, upload the current ZIP once through WordPress and choose **Replace current with uploaded**. Keep the plugin active so its update checker runs. The installed directory should be `jetpack-crm-courses`; use the packaged ZIP rather than GitHub's **Code → Download ZIP** or **Source code** archives.
 
 After that, newer published stable releases appear under **Plugins** and **Dashboard → Updates**. Click **Update now** to install, or turn on **Enable auto-updates** on the plugin row to let WordPress install future releases automatically. Your existing automatic-update preference is preserved. Course records and certificates stay in the database during updates.
 
@@ -22,10 +22,10 @@ Use **Check GitHub for updates** on this plugin's row to refresh immediately, or
 
 ### Publishing a new version
 
-1. Change the `Version` header and `JPCRM_COURSES_VERSION` in `jetpack-crm-courses.php`, and the `Stable tag` in `readme.txt`, to the same version, for example `1.0.2`. Add a changelog entry and adjust requirements if needed.
-2. Run the tests and `python3 scripts/build.py --tag v1.0.2`. Commit and push the source changes, including `.github/workflows/release.yml`, to GitHub.
-3. In **GitHub → Releases → Draft a new release**, create tag `v1.0.2` on that commit, write the release notes, and publish it as a stable release marked **Latest**. The first release for this update-enabled version is `v1.0.1`.
-4. Wait for **Actions → Package plugin release** to succeed. It checks PHP syntax and updater behaviour, validates the tag against the plugin version, and attaches `jetpack-crm-courses-1.0.2.zip` plus `jetpack-crm-courses-update.json` to that release. WordPress only offers releases after both assets are present.
+1. Change the `Version` header and `JPCRM_COURSES_VERSION` in `jetpack-crm-courses.php`, and the `Stable tag` in `readme.txt`, to the same version, for example `1.0.3`. Add a changelog entry and adjust requirements if needed.
+2. Run the tests and `python3 scripts/build.py --tag v1.0.3`. Commit and push the source changes, including `.github/workflows/release.yml`, to GitHub.
+3. In **GitHub → Releases → Draft a new release**, create tag `v1.0.3` on that commit, write the release notes, and publish it as a stable release marked **Latest**. The first release for this update-enabled version is `v1.0.1`.
+4. Wait for **Actions → Package plugin release** to succeed. It checks PHP syntax and updater behaviour, validates the tag against the plugin version, and attaches `jetpack-crm-courses-1.0.3.zip` plus `jetpack-crm-courses-update.json` to that release. WordPress only offers releases after both assets are present.
 5. Check for updates on staging and install the new version there before updating production.
 
 GitHub Actions must be enabled with permission for the workflow's `GITHUB_TOKEN` to write release assets (`contents: write`, declared in the workflow). No personal token or WordPress credentials are needed. This workflow uploads assets **after publishing**; if your repository enables immutable releases, instead build locally, attach both files to the draft, and publish the fully prepared release. The same manual asset-upload process works if Actions is unavailable. A published release should not have its version reused; publish a higher version for fixes.
@@ -34,7 +34,7 @@ Ordinary commits, bare tags, drafts and prereleases do not trigger WordPress upd
 
 ## January 2027 First Aid mailout
 
-1. Open **CRM Courses**, or **Contacts → Course certificates** in the CRM top menu.
+1. Open **Courses**, or **Contacts → Course certificates** in the CRM top menu.
 2. Select **First Aid**, set **Expiry month** to **January 2027**, and apply the filters.
 3. Optionally check **Latest course per contact only** to exclude historical certificates superseded by a later course record.
 4. Check individual records, select every record on the displayed page, or choose **All records matching these filters**. The latter includes results on other pages.
@@ -52,11 +52,16 @@ Up to 5,000 matching course records can be prepared at once. Narrow the course o
 ## Course records and dates
 
 - Each contact may have multiple records for each course, with a separate certificate on each record.
+- Add and edit records inside the contact’s **Courses & certificates** tab. Drag one PDF, JPEG or PNG onto the upload box, or use **Choose file**. The chosen filename and size are displayed before saving.
+- Save is disabled while submitting. A per-form submission token and a unique database key prevent repeated or simultaneous submissions from creating duplicate records or orphan certificate uploads. Opening a fresh form still allows an intentional additional record for the same course/date.
+- **Courses → Course register** and **Courses → Course types** are separate admin pages. The register’s **Send an Email** section prepares the MailPoet audience described above.
 - Configure expiry in days, calendar months, calendar years, or no expiry. February 29 plus one year becomes February 28; January 31 plus one month becomes February's final day.
 - A certificate is current through its expiry date, using the WordPress site timezone. It becomes expired the following day. Dates are displayed as `YYYY-MM-DD`.
 - Each record stores its validity rule and calculated expiry. Changing a course type's validity affects new records only. Editing an existing record's date uses its stored rule; choosing a different type uses that type's current rule.
 - Course types can be archived without destroying history. Rename changes the name displayed on associated records. Archived types cannot be assigned to new records.
 - Records can be edited, their certificates replaced, or explicitly deleted. Concurrent edits are checked using a record version.
+- From version 1.0.3, creating, editing, replacing a certificate or deleting a course record adds a native Note in the contact's **Activity** log. Each entry shows the responsible CRM user and timestamp; expand it for the course, date, expiry and changes. The actor's name and WordPress user ID are also retained in the entry. Notes changes are identified without copying their contents or the certificate into the log.
+- Logging starts after this upgrade; older activity is not reconstructed. Saving unchanged fields or retrying a submission does not add duplicate activity. A failed log write rolls back the course change and its upload. Course and CRM log tables must use InnoDB for transactional rollback. Global course-type configuration changes are not written to individual contacts' logs.
 - The register supports course, contact name/email, expiry month, inclusive date range, current/expired/30-day/no-expiry status, and latest-record filters. Month and explicit date range are mutually exclusive.
 - “Latest” means greatest course date, with record ID breaking same-date ties; future-dated records also count as later records.
 
@@ -77,6 +82,7 @@ Certificates are stored as base64 data in a separate database table, **not in th
 
 - Deactivating or deleting the plugin preserves its tables and certificates. Back up the database before upgrades. Reinstalling the plugin restores access to preserved records.
 - Deleting a course record removes its certificate. Replacing a certificate removes the previous file after a successful save.
+- Course activity remains in the contact's CRM log after a course record is deleted or this plugin is deactivated. These are standard CRM notes, governed by CRM's normal note permissions and retention.
 - Contact deletion and CRM contact merging do not currently cascade or transfer course records. Records whose contact no longer exists are retained in the database but omitted from the register and inaccessible through the certificate endpoint. Preserve/reassign records before merging or removing contacts; there is no orphan-recovery UI in this release.
 - These custom tables are not included in Jetpack CRM's standard CSV exports or WordPress personal-data export/erasure tools. Manage course data explicitly and include the tables in backups/retention procedures.
 - No automatic reminders, expiry cron jobs, client-portal access, course CSV import or native CRM segment conditions are included.

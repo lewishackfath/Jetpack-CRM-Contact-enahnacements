@@ -21,6 +21,7 @@ jobs:
         run: |
           find . -name '*.php' -not -path './.git/*' -print0 | xargs -0 -n1 php -l
           php tests/updater.php
+          node tests/admin.js
       - name: Build the tagged version
         env:
           RELEASE_TAG: ${{ github.event.release.tag_name }}

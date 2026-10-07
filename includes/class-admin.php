@@ -4,11 +4,16 @@ namespace JPCRM_Courses;
 defined( 'ABSPATH' ) || exit;
 
 final class Admin {
-	public static function url( $args = array() ) { return add_query_arg( array_merge( array( 'page' => 'jpcc-courses' ), $args ), admin_url( 'admin.php' ) ); }
+	public static function url( $args = array() ) {
+		if ( 'types' === ( $args['view'] ?? '' ) ) { $args['page'] = 'jpcc-course-types'; unset( $args['view'] ); }
+		return add_query_arg( array_merge( array( 'page' => 'jpcc-courses' ), $args ), admin_url( 'admin.php' ) );
+	}
 
 	public static function menu() {
 		if ( ! CRM::available() ) { return; }
-		add_menu_page( __( 'Course Certificates', 'jpcrm-courses' ), __( 'CRM Courses', 'jpcrm-courses' ), 'admin_zerobs_view_customers', 'jpcc-courses', array( __CLASS__, 'page' ), 'dashicons-welcome-learn-more', 58 );
+		add_menu_page( __( 'Courses', 'jpcrm-courses' ), __( 'Courses', 'jpcrm-courses' ), 'admin_zerobs_view_customers', 'jpcc-courses', array( __CLASS__, 'page' ), 'dashicons-welcome-learn-more', 58 );
+		add_submenu_page( 'jpcc-courses', __( 'Course register', 'jpcrm-courses' ), __( 'Course register', 'jpcrm-courses' ), 'admin_zerobs_view_customers', 'jpcc-courses', array( __CLASS__, 'page' ) );
+		add_submenu_page( 'jpcc-courses', __( 'Course types', 'jpcrm-courses' ), __( 'Course types', 'jpcrm-courses' ), 'admin_zerobs_manage_options', 'jpcc-course-types', array( __CLASS__, 'page' ) );
 	}
 
 	public static function crm_menu( $items ) {
@@ -18,11 +23,16 @@ final class Admin {
 
 	public static function assets() {
 		$page = Plugin::input( 'page', '', $_GET );
-		if ( 'jpcc-courses' !== $page && 'zbs-add-edit' !== $page ) { return; }
+		if ( ! in_array( $page, array( 'jpcc-courses', 'jpcc-course-types', 'zbs-add-edit' ), true ) ) { return; }
 		wp_enqueue_style( 'jpcc-admin', plugins_url( 'assets/admin.css', JPCRM_COURSES_FILE ), array(), JPCRM_COURSES_VERSION );
-		wp_enqueue_script( 'jpcc-admin', plugins_url( 'assets/admin.js', JPCRM_COURSES_FILE ), array(), JPCRM_COURSES_VERSION, true );
+		wp_enqueue_script( 'jpcc-admin', plugins_url( 'assets/admin.js', JPCRM_COURSES_FILE ), array( 'jquery' ), JPCRM_COURSES_VERSION, true );
 		wp_localize_script( 'jpcc-admin', 'jpccAdmin', array( 'ajaxUrl' => admin_url( 'admin-ajax.php' ), 'nonce' => wp_create_nonce( 'jpcc_audience_batch' ),
 			'confirmDelete' => __( 'Delete this course record and its certificate? This cannot be undone.', 'jpcrm-courses' ),
+			'saving' => __( 'Saving…', 'jpcrm-courses' ),
+			'fileError' => __( 'Choose one PDF, JPEG or PNG file, up to 5 MB.', 'jpcrm-courses' ),
+			'dropUnavailable' => __( 'Please use Choose file in this browser.', 'jpcrm-courses' ),
+			'noFile' => __( 'No file selected.', 'jpcrm-courses' ),
+			'clearFile' => __( 'Clear selection', 'jpcrm-courses' ),
 			'progress' => __( 'Processed %1$s of %2$s contacts. Added: %3$s. Skipped: %4$s. Failed: %5$s.', 'jpcrm-courses' ),
 			'error' => __( 'The batch could not finish. Resume to continue from the last saved contact.', 'jpcrm-courses' ) ) );
 	}
@@ -34,27 +44,32 @@ final class Admin {
 	}
 
 	public static function contact_content( $contact_id ) {
+		echo '<div class="jpcc">';
 		try {
 			CRM::require_contact( $contact_id );
+			$edit = Plugin::input( 'jpcc_record', '', $_GET );
+			if ( $edit ) {
+				self::record_page( $contact_id, 'new' === $edit ? 0 : absint( $edit ) );
+				echo '</div>'; return;
+			}
 			$result = Store::query( array( 'contact_id' => $contact_id ), 1, 20 );
-			echo '<div class="jpcc"><h3>' . esc_html__( 'Course history', 'jpcrm-courses' ) . '</h3><p>';
-			if ( CRM::can_edit() ) { self::button( __( 'Add course date', 'jpcrm-courses' ), self::url( array( 'view' => 'record', 'contact_id' => $contact_id ) ), true ); }
+			if ( Plugin::input( 'jpcc_saved', '', $_GET ) ) { echo '<div class="jpcc-success" role="status"><p>' . esc_html__( 'Course record saved.', 'jpcrm-courses' ) . '</p></div>'; }
+			if ( Plugin::input( 'jpcc_deleted', '', $_GET ) ) { echo '<div class="jpcc-success" role="status"><p>' . esc_html__( 'Course record and certificate deleted.', 'jpcrm-courses' ) . '</p></div>'; }
+			echo '<h3>' . esc_html__( 'Course history', 'jpcrm-courses' ) . '</h3><p>';
+			if ( CRM::can_edit() ) { self::button( __( 'Add course date', 'jpcrm-courses' ), CRM::courses_link( $contact_id, array( 'jpcc_record' => 'new' ) ), true ); }
 			self::button( __( 'View all course records', 'jpcrm-courses' ), self::url( array( 'contact_id' => $contact_id ) ) );
 			echo '</p>';
 			self::table( $result['rows'], false );
 			if ( $result['total'] > 20 ) { echo '<p>' . esc_html__( 'Showing 20 records. Open all course records to see the full history.', 'jpcrm-courses' ) . '</p>'; }
 			echo '</div>';
-		} catch ( \Throwable $e ) { self::error( $e->getMessage() ); }
+		} catch ( \Throwable $e ) { echo '<div class="jpcc-error" role="alert"><p>' . esc_html( $e->getMessage() ) . '</p></div></div>'; }
 	}
 
 	public static function page() {
 		if ( ! CRM::available() || ! CRM::can_view() ) { wp_die( esc_html__( 'CRM contact access is required.', 'jpcrm-courses' ) ); }
-		$view = Plugin::input( 'view', '', $_GET );
-		echo '<div class="wrap jpcc"><h1>' . esc_html__( 'Course certificates', 'jpcrm-courses' ) . '</h1><p class="jpcc-intro">' . esc_html__( 'Course history, renewal dates and the people who need a reminder.', 'jpcrm-courses' ) . '</p>';
-		echo '<nav class="nav-tab-wrapper" aria-label="' . esc_attr__( 'Course navigation', 'jpcrm-courses' ) . '">';
-		echo '<a class="nav-tab ' . ( 'types' !== $view ? 'nav-tab-active' : '' ) . '" href="' . esc_url( self::url() ) . '">' . esc_html__( 'Course register', 'jpcrm-courses' ) . '</a>';
-		if ( CRM::can_configure() ) { echo '<a class="nav-tab ' . ( 'types' === $view ? 'nav-tab-active' : '' ) . '" href="' . esc_url( self::url( array( 'view' => 'types' ) ) ) . '">' . esc_html__( 'Course types', 'jpcrm-courses' ) . '</a>'; }
-		echo '</nav>';
+		$view = 'jpcc-course-types' === Plugin::input( 'page', '', $_GET ) ? 'types' : Plugin::input( 'view', '', $_GET );
+		$titles = array( 'types' => __( 'Course types', 'jpcrm-courses' ), 'record' => __( 'Course record', 'jpcrm-courses' ), 'audience' => __( 'Send an Email', 'jpcrm-courses' ) );
+		echo '<div class="wrap jpcc"><h1>' . esc_html( $titles[ $view ] ?? __( 'Course register', 'jpcrm-courses' ) ) . '</h1><p class="jpcc-intro">' . esc_html__( 'Course history, renewal dates and the people who need a reminder.', 'jpcrm-courses' ) . '</p>';
 		if ( Plugin::input( 'saved', '', $_GET ) ) { echo '<div class="notice notice-success"><p>' . esc_html__( 'Saved successfully.', 'jpcrm-courses' ) . '</p></div>'; }
 		if ( Plugin::input( 'deleted', '', $_GET ) ) { echo '<div class="notice notice-success"><p>' . esc_html__( 'Course record and certificate deleted.', 'jpcrm-courses' ) . '</p></div>'; }
 		try {
@@ -97,7 +112,7 @@ final class Admin {
 		if ( $contact ) {
 			echo '<div class="jpcc-toolbar"><h2>' . esc_html( CRM::name( $contact ) ) . '</h2><div>';
 			self::button( __( 'Open contact', 'jpcrm-courses' ), CRM::link( $contact['id'] ) );
-			if ( CRM::can_edit() ) { self::button( __( 'Add course date', 'jpcrm-courses' ), self::url( array( 'view' => 'record', 'contact_id' => $contact['id'] ) ), true ); }
+			if ( CRM::can_edit() ) { self::button( __( 'Add course date', 'jpcrm-courses' ), CRM::courses_link( $contact['id'], array( 'jpcc_record' => 'new' ) ), true ); }
 			echo '</div></div>';
 		}
 		echo '<form method="get" class="jpcc-panel jpcc-filters">';
@@ -123,7 +138,7 @@ final class Admin {
 		self::table( $result['rows'], $can_audience );
 		if ( $can_audience ) {
 			if ( $result['total'] ) {
-				echo '<section class="jpcc-panel jpcc-mailout"><h2>' . esc_html__( 'Prepare a MailPoet email', 'jpcrm-courses' ) . '</h2><p>' . esc_html__( 'Create a new list from your selection, then compose your email in MailPoet and choose that list as the recipients.', 'jpcrm-courses' ) . '</p><div class="jpcc-filters">';
+				echo '<section class="jpcc-panel jpcc-mailout"><h2>' . esc_html__( 'Send an Email', 'jpcrm-courses' ) . '</h2><p>' . esc_html__( 'Create a new list from your selection, then compose your email in MailPoet and choose that list as the recipients.', 'jpcrm-courses' ) . '</p><div class="jpcc-filters">';
 				self::select( __( 'Include', 'jpcrm-courses' ), 'selection', 'selected', array( 'selected' => __( 'Checked records on this page', 'jpcrm-courses' ), 'all' => sprintf( __( 'All %d records matching these filters', 'jpcrm-courses' ), $result['total'] ) ) );
 				$default_name = ( $filters['course_type_id'] ? $types[ $filters['course_type_id'] ] ?? '' : __( 'Course renewals', 'jpcrm-courses' ) ) . ( $filters['expiry_month'] ? ' — ' . $filters['expiry_month'] : '' );
 				self::field( __( 'Audience name', 'jpcrm-courses' ), 'audience_name', $default_name, 'text', 'required maxlength="100"' );
@@ -160,7 +175,7 @@ final class Admin {
 			if ( $row['certificate_id'] ) { echo '<a target="_blank" rel="noopener noreferrer" href="' . esc_url( Certificates::url( $row['id'] ) ) . '">' . esc_html__( 'View', 'jpcrm-courses' ) . '</a> · <a href="' . esc_url( Certificates::url( $row['id'], true ) ) . '">' . esc_html__( 'Download', 'jpcrm-courses' ) . '</a>'; }
 			else { echo '—'; }
 			echo '</td><td>';
-			if ( CRM::can_edit() ) { echo '<a href="' . esc_url( self::url( array( 'view' => 'record', 'id' => $row['id'] ) ) ) . '">' . esc_html__( 'Edit', 'jpcrm-courses' ) . '</a>'; }
+			if ( CRM::can_edit() ) { echo '<a href="' . esc_url( CRM::courses_link( $row['contact_id'], array( 'jpcc_record' => $row['id'] ) ) ) . '">' . esc_html__( 'Edit', 'jpcrm-courses' ) . '</a>'; }
 			echo '</td></tr>';
 		}
 		echo '</tbody></table></div>';
@@ -197,11 +212,12 @@ final class Admin {
 		}
 	}
 
-	public static function record_page() {
-		$id = absint( Plugin::input( 'id', '', $_GET ) );
+	public static function record_page( $contact_id = 0, $id = null ) {
+		$id = null === $id ? absint( Plugin::input( 'id', '', $_GET ) ) : $id;
 		$record = $id ? Store::record( $id ) : null;
 		if ( $id && ! $record ) { throw new \RuntimeException( __( 'Course record not found.', 'jpcrm-courses' ) ); }
-		$contact_id = $record ? $record['contact_id'] : absint( Plugin::input( 'contact_id', '', $_GET ) );
+		if ( $record && $contact_id && (int) $record['contact_id'] !== (int) $contact_id ) { throw new \RuntimeException( __( 'This course record belongs to a different contact.', 'jpcrm-courses' ) ); }
+		$contact_id = $contact_id ?: ( $record ? $record['contact_id'] : absint( Plugin::input( 'contact_id', '', $_GET ) ) );
 		$contact = CRM::require_contact( $contact_id, true );
 		echo '<section class="jpcc-panel jpcc-editor"><h2>' . esc_html( $id ? __( 'Edit course record', 'jpcrm-courses' ) : __( 'Add course date', 'jpcrm-courses' ) ) . ' · ' . esc_html( CRM::name( $contact ) ) . '</h2>';
 		$options = array( '' => __( 'Choose a course', 'jpcrm-courses' ) );
@@ -215,16 +231,17 @@ final class Admin {
 		}
 		self::post_form( 'save_record', 'jpcc_save_record' );
 		self::hidden( 'id', $id ); self::hidden( 'contact_id', $contact_id ); self::hidden( 'version', $record['version'] ?? 0 );
+		if ( ! $record ) { self::hidden( 'submission_token', str_replace( '-', '', wp_generate_uuid4() ) ); }
 		self::select( __( 'Course type', 'jpcrm-courses' ), 'course_type_id', $record['course_type_id'] ?? '', $options );
 		self::field( __( 'Course date', 'jpcrm-courses' ), 'course_date', $record['course_date'] ?? current_time( 'Y-m-d' ), 'date', 'required min="1900-01-01" max="9999-12-31"' );
 		if ( $record ) {
 			echo '<p>' . esc_html( sprintf( __( 'Saved validity: %1$s. Expiry: %2$s. Editing the date uses the saved validity; selecting a different course uses that course’s current rule.', 'jpcrm-courses' ), self::rule_label( $record ), $record['expires_on'] ?: __( 'No expiry', 'jpcrm-courses' ) ) ) . '</p>';
 			if ( $record['certificate_id'] ) { self::button( __( 'View current certificate', 'jpcrm-courses' ), Certificates::url( $id ) ); }
 		}
-		echo '<label class="jpcc-field"><span>' . esc_html( $record ? __( 'Replace certificate (optional)', 'jpcrm-courses' ) : __( 'Certificate', 'jpcrm-courses' ) ) . '</span><input type="file" name="certificate" accept=".pdf,.jpg,.jpeg,.png" ' . ( $record ? '' : 'required' ) . '></label><p class="description">' . esc_html__( 'PDF, JPEG or PNG. Maximum 5 MB, subject to your server upload limit. Only CRM users with contact access can view certificates.', 'jpcrm-courses' ) . '</p><label class="jpcc-field"><span>' . esc_html__( 'Notes (optional)', 'jpcrm-courses' ) . '</span><textarea name="notes" rows="4" maxlength="5000">' . esc_textarea( $record['notes'] ?? '' ) . '</textarea></label>';
+		echo '<div class="jpcc-field"><label for="jpcc-certificate"><strong>' . esc_html( $record ? __( 'Replace certificate (optional)', 'jpcrm-courses' ) : __( 'Certificate', 'jpcrm-courses' ) ) . '</strong></label><div class="jpcc-dropzone" data-jpcc-dropzone><span class="dashicons dashicons-upload" aria-hidden="true"></span><strong>' . esc_html__( 'Drag and drop a certificate here', 'jpcrm-courses' ) . '</strong><span>' . esc_html__( 'or choose a file below', 'jpcrm-courses' ) . '</span><input id="jpcc-certificate" type="file" name="certificate" accept=".pdf,.jpg,.jpeg,.png" aria-describedby="jpcc-file-help jpcc-file-status jpcc-file-error" ' . ( $record ? '' : 'required' ) . '><span id="jpcc-file-status" data-jpcc-file-status role="status">' . esc_html__( 'No file selected.', 'jpcrm-courses' ) . '</span><span id="jpcc-file-error" data-jpcc-file-error role="alert"></span></div></div><p class="description" id="jpcc-file-help">' . esc_html__( 'PDF, JPEG or PNG. Maximum 5 MB, subject to your server upload limit. Only CRM users with contact access can view certificates.', 'jpcrm-courses' ) . '</p><label class="jpcc-field"><span>' . esc_html__( 'Notes (optional)', 'jpcrm-courses' ) . '</span><textarea name="notes" rows="4" maxlength="5000">' . esc_textarea( $record['notes'] ?? '' ) . '</textarea></label>';
 		submit_button( __( 'Save course record', 'jpcrm-courses' ) );
 		echo '</form>';
-		self::button( __( 'Back to contact courses', 'jpcrm-courses' ), self::url( array( 'contact_id' => $contact_id ) ) );
+		self::button( __( 'Back to contact courses', 'jpcrm-courses' ), CRM::courses_link( $contact_id ) );
 		echo '</section>';
 		if ( $record ) {
 			echo '<details class="jpcc-panel"><summary>' . esc_html__( 'Delete this record', 'jpcrm-courses' ) . '</summary><p>' . esc_html__( 'Permanently removes this course record and its certificate.', 'jpcrm-courses' ) . '</p>';

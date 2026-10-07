@@ -19,7 +19,7 @@ final class Plugin {
 	}
 
 	public static function upgrade() {
-		if ( CRM::available() && current_user_can( 'activate_plugins' ) && JPCRM_COURSES_VERSION !== get_option( 'jpcc_schema_version' ) ) { Store::install(); }
+		if ( CRM::available() && ( CRM::can_view() || current_user_can( 'activate_plugins' ) ) && JPCRM_COURSES_VERSION !== get_option( 'jpcc_schema_version' ) ) { Store::install(); }
 	}
 
 	public static function dependency_notice() {
@@ -63,11 +63,12 @@ final class Plugin {
 		self::authorize( 'jpcc_save_record', CRM::can_edit() );
 		try {
 			$data = array();
-			foreach ( array( 'id', 'contact_id', 'course_type_id', 'course_date', 'version' ) as $key ) { $data[ $key ] = self::input( $key ); }
+			foreach ( array( 'id', 'contact_id', 'course_type_id', 'course_date', 'version', 'submission_token' ) as $key ) { $data[ $key ] = self::input( $key ); }
 			$data['notes'] = isset( $_POST['notes'] ) && is_string( $_POST['notes'] ) ? sanitize_textarea_field( wp_unslash( $_POST['notes'] ) ) : '';
 			$id = Store::save_record( $data, Certificates::upload( $_FILES['certificate'] ?? null ) );
 			$record = Store::record( $id );
-			self::redirect( array( 'contact_id' => $record['contact_id'], 'saved' => 1 ) );
+			wp_safe_redirect( CRM::courses_link( $record['contact_id'], array( 'jpcc_saved' => 1 ) ), 303 );
+			exit;
 		} catch ( \Throwable $e ) { self::fail( $e ); }
 	}
 
@@ -75,8 +76,10 @@ final class Plugin {
 		$id = absint( self::input( 'id' ) );
 		self::authorize( 'jpcc_delete_record_' . $id, CRM::can_edit() );
 		try {
+			$record = Store::record( $id );
 			Store::delete_record( $id, absint( self::input( 'version' ) ) );
-			self::redirect( array( 'deleted' => 1 ) );
+			wp_safe_redirect( CRM::courses_link( $record['contact_id'], array( 'jpcc_deleted' => 1 ) ), 303 );
+			exit;
 		} catch ( \Throwable $e ) { self::fail( $e ); }
 	}
 
