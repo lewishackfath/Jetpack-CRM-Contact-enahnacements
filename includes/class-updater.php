@@ -5,10 +5,11 @@ defined( 'ABSPATH' ) || exit;
 
 /** Public GitHub releases, delivered through WordPress's native plugin updater. */
 final class Updater {
-	const REPOSITORY = 'https://github.com/lewishackfath/Jetpack-CRM---Contact-enahnacements';
-	const API = 'https://api.github.com/repos/lewishackfath/Jetpack-CRM---Contact-enahnacements/releases/latest';
+	const REPOSITORY = 'https://github.com/lewishackfath/Jetpack-CRM-Contact-enahnacements';
+	const API = 'https://api.github.com/repos/lewishackfath/Jetpack-CRM-Contact-enahnacements/releases/latest';
 	const SLUG = 'jetpack-crm-courses';
-	const CACHE = 'jpcc_github_release_v1';
+	// Discard metadata cached before the GitHub repository was renamed.
+	const CACHE = 'jpcc_github_release_v2';
 
 	public static function boot() {
 		add_filter( 'update_plugins_github.com', array( __CLASS__, 'update' ), 10, 4 );
