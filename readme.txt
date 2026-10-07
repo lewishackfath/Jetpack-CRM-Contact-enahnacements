@@ -4,7 +4,7 @@ Requires at least: 6.5
 Tested up to: 7.1
 Requires PHP: 7.4
 Requires Plugins: zero-bs-crm
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,10 @@ MailPoet recipients must already be active subscribers. Composition and sending 
 4. Use CRM Courses to filter expiry dates and prepare a MailPoet audience.
 
 == Changelog ==
+
+= 1.0.1 =
+* Updates from published GitHub releases through the WordPress plugin updater.
+* Release packaging workflow with version and compatibility metadata validation.
 
 = 1.0.0 =
 * Initial release for Jetpack CRM 6.8.5 and MailPoet.

@@ -5,12 +5,32 @@ A standalone WordPress plugin for **Jetpack CRM 6.8.5**, with **MailPoet** audie
 ## Install
 
 1. In a staging copy of your WordPress site, activate Jetpack CRM 6.8.5 and MailPoet.
-2. Upload `dist/jetpack-crm-courses-1.0.0.zip` through **Plugins → Add Plugin → Upload Plugin**, then activate it.
+2. Upload `dist/jetpack-crm-courses-1.0.1.zip` through **Plugins → Add Plugin → Upload Plugin**, then activate it.
 3. Open **CRM Courses → Course types**. Add **First Aid**, valid for **1 year**.
 4. Open a CRM contact, select **Courses & certificates**, and click **Add course date**.
 5. Select the course, enter its date, and upload a PDF, JPEG or PNG certificate. The expiry is calculated when saved.
 
 The source folder can also be installed as `wp-content/plugins/jetpack-crm-courses/`. It requires no build step or Composer dependencies. WordPress 6.5+, PHP 7.4+, PHP Fileinfo, and an InnoDB-capable database are required. Network activation is intentionally refused; activate separately on each multisite site.
+
+## Updates from GitHub
+
+Version **1.0.1** adds updates from this [GitHub repository](https://github.com/lewishackfath/Jetpack-CRM---Contact-enahnacements). If you already installed 1.0.0, upload the 1.0.1 ZIP once through WordPress and choose **Replace current with uploaded**. Keep the plugin active so its update checker runs. The installed directory should be `jetpack-crm-courses`; use the packaged ZIP rather than GitHub's **Code → Download ZIP** or **Source code** archives.
+
+After that, newer published stable releases appear under **Plugins** and **Dashboard → Updates**. Click **Update now** to install, or turn on **Enable auto-updates** on the plugin row to let WordPress install future releases automatically. Your existing automatic-update preference is preserved. Course records and certificates stay in the database during updates.
+
+Use **Check GitHub for updates** on this plugin's row to refresh immediately, or **Dashboard → Updates → Check again**. Otherwise WordPress checks on its normal schedule; GitHub metadata is cached for six hours. A failed request or incomplete release is cached for five minutes. Update checks need outbound HTTPS access to GitHub and its release download hosts. This implementation uses public releases without a GitHub token; changing the repository to private would require a different authenticated delivery setup. No contact or certificate data is included in update requests.
+
+### Publishing a new version
+
+1. Change the `Version` header and `JPCRM_COURSES_VERSION` in `jetpack-crm-courses.php`, and the `Stable tag` in `readme.txt`, to the same version, for example `1.0.2`. Add a changelog entry and adjust requirements if needed.
+2. Run the tests and `python3 scripts/build.py --tag v1.0.2`. Commit and push the source changes, including `.github/workflows/release.yml`, to GitHub.
+3. In **GitHub → Releases → Draft a new release**, create tag `v1.0.2` on that commit, write the release notes, and publish it as a stable release marked **Latest**. The first release for this update-enabled version is `v1.0.1`.
+4. Wait for **Actions → Package plugin release** to succeed. It checks PHP syntax and updater behaviour, validates the tag against the plugin version, and attaches `jetpack-crm-courses-1.0.2.zip` plus `jetpack-crm-courses-update.json` to that release. WordPress only offers releases after both assets are present.
+5. Check for updates on staging and install the new version there before updating production.
+
+GitHub Actions must be enabled with permission for the workflow's `GITHUB_TOKEN` to write release assets (`contents: write`, declared in the workflow). No personal token or WordPress credentials are needed. This workflow uploads assets **after publishing**; if your repository enables immutable releases, instead build locally, attach both files to the draft, and publish the fully prepared release. The same manual asset-upload process works if Actions is unavailable. A published release should not have its version reused; publish a higher version for fixes.
+
+Ordinary commits, bare tags, drafts and prereleases do not trigger WordPress updates. The updater uses GitHub's **Latest release**, requires a `major.minor.patch` tag (optional `v` prefix), checks asset URLs belong to this repository/tag, and reads the new release's WordPress/PHP requirements from the generated manifest. GitHub's automatic source archives are never used as install packages. Release notes are shown as escaped text in WordPress's plugin details dialog.
 
 ## January 2027 First Aid mailout
 
@@ -72,4 +92,4 @@ Rebuild the distributable with:
 python3 scripts/build.py
 ```
 
-Integration references: [Jetpack CRM contact tabs](https://kb.jetpackcrm.com/knowledge-base/adding-custom-tabs-to-contact-view-or-company-view/), [MailPoet public PHP API](https://github.com/mailpoet/mailpoet/blob/trunk/doc/Readme.md), [MailPoet list subscriptions](https://github.com/mailpoet/mailpoet/blob/trunk/doc/api_methods/SubscribeToLists.md). CRM hooks, permissions and DAL calls were also checked directly against the distributed 6.8.5 source.
+Integration references: [Jetpack CRM contact tabs](https://kb.jetpackcrm.com/knowledge-base/adding-custom-tabs-to-contact-view-or-company-view/), [MailPoet public PHP API](https://github.com/mailpoet/mailpoet/blob/trunk/doc/Readme.md), [MailPoet list subscriptions](https://github.com/mailpoet/mailpoet/blob/trunk/doc/api_methods/SubscribeToLists.md), [WordPress external plugin updates](https://developer.wordpress.org/reference/hooks/update_plugins_hostname/), [GitHub release events](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#release). CRM hooks, permissions and DAL calls were also checked directly against the distributed 6.8.5 source.

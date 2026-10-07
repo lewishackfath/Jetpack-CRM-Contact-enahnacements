@@ -5,6 +5,7 @@ defined( 'ABSPATH' ) || exit;
 
 final class Plugin {
 	public static function boot() {
+		Updater::boot();
 		add_action( 'admin_init', array( __CLASS__, 'upgrade' ) );
 		add_action( 'admin_notices', array( __CLASS__, 'dependency_notice' ) );
 		add_action( 'admin_menu', array( 'JPCRM_Courses\Admin', 'menu' ), 99 );
