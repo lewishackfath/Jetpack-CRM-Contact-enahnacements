@@ -34,10 +34,23 @@ final class Certificates {
 	}
 
 	public static function get( $record_id ) {
-		global $wpdb;
 		$record = Store::record( $record_id );
 		if ( ! $record ) { throw new \RuntimeException( __( 'Certificate not found.', 'jpcrm-courses' ) ); }
 		CRM::require_contact( $record['contact_id'] );
+		return self::for_record( $record );
+	}
+
+	public static function get_for_portal( $record_id ) {
+		$contact_id = Portal::contact_id();
+		$record = Store::record( $record_id );
+		if ( ! $record || (int) $record['contact_id'] !== $contact_id ) {
+			throw new \RuntimeException( __( 'Certificate unavailable.', 'jpcrm-courses' ) );
+		}
+		return self::for_record( $record );
+	}
+
+	private static function for_record( $record ) {
+		global $wpdb;
 		$certificate = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . Store::table( 'certificates' ) . ' WHERE id = %d', $record['certificate_id'] ), ARRAY_A );
 		if ( ! $certificate ) { throw new \RuntimeException( __( 'Certificate not found.', 'jpcrm-courses' ) ); }
 		return $certificate;

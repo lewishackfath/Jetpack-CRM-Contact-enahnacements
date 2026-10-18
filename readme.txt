@@ -4,7 +4,7 @@ Requires at least: 6.5
 Tested up to: 7.1
 Requires PHP: 7.4
 Requires Plugins: zero-bs-crm
-Stable tag: 1.0.4
+Stable tag: 1.1.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,12 @@ MailPoet recipients must already be active subscribers. Composition and sending 
 4. Use Courses to filter expiry dates and prepare a MailPoet audience.
 
 == Changelog ==
+
+= 1.1.0 =
+* Add Training & certificates to an active Client Portal, with private viewing and downloads for the logged-in contact only.
+* Show training dates, expiry, status and paginated history without customer add/edit/delete controls or internal notes.
+* Add Courses > Client Portal to select read-only standard and custom contact fields, enforced by CRM during portal saves.
+* Preserve staff editing permissions and existing portal visibility settings.
 
 = 1.0.4 =
 * Update GitHub repository and release URLs following the repository rename, and refresh cached release metadata.

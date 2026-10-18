@@ -14,6 +14,7 @@ final class Store {
 			wp_die( esc_html__( 'Activate Course Certificates separately on each site, not network-wide.', 'jpcrm-courses' ) );
 		}
 		self::install();
+		delete_option( 'jpcc_portal_endpoint_installed' );
 	}
 
 	public static function install() {

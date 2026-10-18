@@ -56,3 +56,15 @@ JPCC_TEST_WP_ROOT=/absolute/path/to/test-wordpress php tests/update-integration.
 This extracts the built plugin into a temporary plugin directory, supplies simulated GitHub responses through WordPress's HTTP filter, and uses the real `wp_update_plugins()`, `plugins_api()` and background `Plugin_Upgrader` paths. It checks version discovery, compatibility metadata, release details, actual ZIP installation, activation, record/certificate preservation, automatic-update preferences, cache invalidation and up-to-date classification. It never upgrades the source checkout or downloads an actual remote package. The temporary plugin copy is removed afterward. The marked test database and WordPress upgrade working directories are still used, so the site must be disposable. This test does not publish a GitHub release or test GitHub-hosted Actions execution.
 
 Also verify in a browser: the CRM contact tab, add/edit/upload form, certificate view/download, January expiry filter, record selection, batched audience progress, and MailPoet recipient selection. Test HTTP access while logged out and with a WordPress subscriber; a valid nonce must never grant access without the CRM capability.
+
+## Client Portal
+
+With an active standard Client Portal on the marked disposable site and its localhost HTTP server running:
+
+```sh
+JPCC_TEST_WP_ROOT=/absolute/path/to/test-wordpress php tests/portal.php
+```
+
+This suite needs Jetpack CRM 6.8.5 and PHP Curl/DOM, but not MailPoet. It creates real customers, WordPress subscriber and native CRM customer accounts, custom fields, courses and certificates, then uses real sessions to test the native portal endpoint, pagination, certificate bytes/headers, anonymous access, cross-contact attempts with valid nonces, disabled access, forbidden mutations, settings authorization and CSRF. It checks native details rendering and submits forged updates to built-in, secondary-address, custom text and checkbox fields, then verifies that locked values remain unchanged while unlocked fields save. Settings/custom-field configuration and temporary sessions are restored afterward; contact/course fixtures remain for inspection.
+
+This release was exercised on WordPress 6.8.3, Jetpack CRM 6.8.5, PHP 8.5.8 and MariaDB 12.3.2. Client Portal Pro and third-party template overrides are not installed in that test environment.

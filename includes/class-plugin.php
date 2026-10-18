@@ -6,6 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Plugin {
 	public static function boot() {
 		Updater::boot();
+		Portal::boot();
 		add_action( 'admin_init', array( __CLASS__, 'upgrade' ) );
 		add_action( 'admin_notices', array( __CLASS__, 'dependency_notice' ) );
 		add_action( 'admin_menu', array( 'JPCRM_Courses\Admin', 'menu' ), 99 );
@@ -88,23 +89,28 @@ final class Plugin {
 		check_admin_referer( 'jpcc_certificate_' . $id );
 		try {
 			$certificate = Certificates::get( $id );
-			$bytes = base64_decode( $certificate['data_base64'], true );
-			if ( false === $bytes || strlen( $bytes ) !== (int) $certificate['file_size'] ) { throw new \RuntimeException( __( 'Certificate data is damaged.', 'jpcrm-courses' ) ); }
-			while ( ob_get_level() ) { ob_end_clean(); }
-			nocache_headers();
-			header( 'Cache-Control: private, no-store, max-age=0' );
-			header( 'Content-Type: ' . $certificate['mime'] );
-			header( 'Content-Length: ' . strlen( $bytes ) );
-			header( 'X-Content-Type-Options: nosniff' );
-			// A CSP sandbox blocks native PDF viewers. Serve only validated MIME types,
-			// with nosniff, and restrict embedding to this site's authenticated pages.
-			header( "Content-Security-Policy: frame-ancestors 'self'" );
-			header( 'Referrer-Policy: no-referrer' );
-			$disposition = '1' === self::input( 'download', '', $_GET ) ? 'attachment' : 'inline';
-			header( 'Content-Disposition: ' . $disposition . '; filename="certificate-' . $id . '.' . pathinfo( $certificate['filename'], PATHINFO_EXTENSION ) . '"; filename*=UTF-8\'\'' . rawurlencode( $certificate['filename'] ) );
-			echo $bytes;
-			exit;
+			self::serve_certificate( $certificate, $id );
 		} catch ( \Throwable $e ) { self::fail( $e ); }
+	}
+
+	/** Call only after the staff or portal controller has authorised this record. */
+	public static function serve_certificate( $certificate, $id ) {
+		$bytes = base64_decode( $certificate['data_base64'], true );
+		if ( false === $bytes || strlen( $bytes ) !== (int) $certificate['file_size'] ) { throw new \RuntimeException( __( 'Certificate data is damaged.', 'jpcrm-courses' ) ); }
+		while ( ob_get_level() ) { ob_end_clean(); }
+		nocache_headers();
+		header( 'Cache-Control: private, no-store, max-age=0' );
+		header( 'Content-Type: ' . $certificate['mime'] );
+		header( 'Content-Length: ' . strlen( $bytes ) );
+		header( 'X-Content-Type-Options: nosniff' );
+		// A CSP sandbox blocks native PDF viewers. Serve only validated MIME types,
+		// with nosniff, and restrict embedding to this site's authenticated pages.
+		header( "Content-Security-Policy: frame-ancestors 'self'" );
+		header( 'Referrer-Policy: no-referrer' );
+		$disposition = '1' === self::input( 'download', '', $_GET ) ? 'attachment' : 'inline';
+		header( 'Content-Disposition: ' . $disposition . '; filename="certificate-' . $id . '.' . pathinfo( $certificate['filename'], PATHINFO_EXTENSION ) . '"; filename*=UTF-8\'\'' . rawurlencode( $certificate['filename'] ) );
+		echo $bytes;
+		exit;
 	}
 
 	public static function audience() {

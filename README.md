@@ -5,7 +5,7 @@ A standalone WordPress plugin for **Jetpack CRM 6.8.5**, with **MailPoet** audie
 ## Install
 
 1. In a staging copy of your WordPress site, activate Jetpack CRM 6.8.5 and MailPoet.
-2. Upload `dist/jetpack-crm-courses-1.0.4.zip` through **Plugins → Add Plugin → Upload Plugin**, then activate it. If replacing an existing installation, choose **Replace current with uploaded**.
+2. Upload `dist/jetpack-crm-courses-1.1.0.zip` through **Plugins → Add Plugin → Upload Plugin**, then activate it. If replacing an existing installation, choose **Replace current with uploaded**.
 3. Open **Courses → Course types**. Add **First Aid**, valid for **1 year**.
 4. Open a CRM contact, select **Courses & certificates**, and click **Add course date**.
 5. Select the course, enter its date, and upload a PDF, JPEG or PNG certificate. The expiry is calculated when saved. The form stays on the contact, and saving returns to its **Courses & certificates** tab.
@@ -31,6 +31,18 @@ Use **Check GitHub for updates** on this plugin's row to refresh immediately, or
 GitHub Actions must be enabled with permission for the workflow's `GITHUB_TOKEN` to write release assets (`contents: write`, declared in the workflow). No personal token or WordPress credentials are needed. This workflow uploads assets **after publishing**; if your repository enables immutable releases, instead build locally, attach both files to the draft, and publish the fully prepared release. The same manual asset-upload process works if Actions is unavailable. A published release should not have its version reused; publish a higher version for fixes.
 
 Ordinary commits, bare tags, drafts and prereleases do not trigger WordPress updates. The updater uses GitHub's **Latest release**, requires a `major.minor.patch` tag (optional `v` prefix), checks asset URLs belong to this repository/tag, and reads the new release's WordPress/PHP requirements from the generated manifest. GitHub's automatic source archives are never used as install packages. Release notes are shown as escaped text in WordPress's plugin details dialog.
+
+## Client Portal
+
+When Jetpack CRM's **Client Portal** module is active, **Training & certificates** appears in its navigation automatically. Customers log in with their existing portal account to see their own course names, training dates, expiry dates and current/expired status, then **View** or **Download** each certificate. History is paginated in groups of 20, including expired certificates and archived course types. Customers cannot add, edit, replace or delete records. Internal notes and staff attribution are not displayed.
+
+The integration uses the portal's normal email-to-contact mapping. The logged-in WordPress user's email must match an existing CRM contact, and that contact's portal access must be enabled. Certificate requests recheck this identity, contact ownership, active portal module and a user-specific nonce every time. Invoice/quote easy-access links do not grant certificate access. CRM staff certificate access continues to work independently of the portal.
+
+Open **Courses → Client Portal** to choose **Read-only contact fields**. Tick the standard or custom contact fields customers may see but must not change, then save. This policy applies to all portal customers in **Your Details**. Fields already hidden by CRM remain hidden; staff can still edit contacts, and customers can still change their account password. You can configure the policy while the portal is inactive.
+
+The picker uses Jetpack CRM's native `portal_readonlyfields` setting, shared with Client Portal Pro. Selected controls are disabled in the portal, and CRM preserves their stored values even if a customer submits altered form data. Existing Pro address-group rules are expanded into individual field selections when saved, and unknown extension settings are preserved. Uncheck a field and save to make it editable again.
+
+Verified against the standard Client Portal included in **Jetpack CRM 6.8.5**; Pro is not required for these additions. Pro-specific templates, custom field renderers and other third-party portal overrides need their own staging checks. The first endpoint registration requests a one-time rewrite refresh through CRM. If the new tab returns 404 after deployment, save **Settings → Permalinks**. Exclude the portal and authenticated certificate responses from any full-page/CDN cache; responses send private/no-store headers.
 
 ## January 2027 First Aid mailout
 
@@ -71,12 +83,14 @@ Up to 5,000 matching course records can be prepared at once. Narrow the course o
 | --- | --- |
 | View register and certificates | `admin_zerobs_view_customers` |
 | Add, edit, replace or delete records | View permission plus `admin_zerobs_customers` |
+| View/download own certificates in the Client Portal | Logged-in user matching an enabled CRM contact, with active Client Portal and valid nonce |
+| Configure portal read-only fields | `admin_zerobs_manage_options` |
 | Configure course types | `admin_zerobs_manage_options` and contact-view access to the admin page |
 | Prepare MailPoet audiences | Edit permission plus `admin_zerobs_sendemails_contacts`, `mailpoet_manage_subscribers`, `mailpoet_manage_segments`, `mailpoet_manage_emails` |
 
 Administrators normally have these capabilities when the relevant plugins are active. CRM contact managers may need their MailPoet permissions configured. The plugin does not grant additional role capabilities. It uses Jetpack CRM's contact access and ownership helpers; Jetpack CRM 6.8.5 itself currently allows shared contact visibility for users with its contact-view capability.
 
-Certificates are stored as base64 data in a separate database table, **not in the public WordPress Media Library or uploads directory**. Viewing/downloading requires an authenticated user with contact access and a valid nonce. PDF/JPEG/PNG MIME types and signatures are checked; files are capped at 5 MB, also subject to PHP's upload limits. Database backups therefore include the certificates; base64 increases storage size by approximately one third. Allow enough space and a `max_allowed_packet` of at least 16 MB for full-size uploads.
+Certificates are stored as base64 data in a separate database table, **not in the public WordPress Media Library or uploads directory**. Viewing/downloading requires an authenticated CRM staff user with contact access, or the contact’s own enabled Client Portal account while the portal is active, plus a valid nonce. PDF/JPEG/PNG MIME types and signatures are checked; files are capped at 5 MB, also subject to PHP's upload limits. Database backups therefore include the certificates; base64 increases storage size by approximately one third. Allow enough space and a `max_allowed_packet` of at least 16 MB for full-size uploads.
 
 ## Retention and current boundaries
 
@@ -85,7 +99,7 @@ Certificates are stored as base64 data in a separate database table, **not in th
 - Course activity remains in the contact's CRM log after a course record is deleted or this plugin is deactivated. These are standard CRM notes, governed by CRM's normal note permissions and retention.
 - Contact deletion and CRM contact merging do not currently cascade or transfer course records. Records whose contact no longer exists are retained in the database but omitted from the register and inaccessible through the certificate endpoint. Preserve/reassign records before merging or removing contacts; there is no orphan-recovery UI in this release.
 - These custom tables are not included in Jetpack CRM's standard CSV exports or WordPress personal-data export/erasure tools. Manage course data explicitly and include the tables in backups/retention procedures.
-- No automatic reminders, expiry cron jobs, client-portal access, course CSV import or native CRM segment conditions are included.
+- No automatic reminders, expiry cron jobs, course CSV import or native CRM segment conditions are included.
 - For MailPoet setup, sender authentication, test delivery and actual sending, use MailPoet's normal configuration. Production email delivery has not been tested by this project.
 
 ## Development and verification

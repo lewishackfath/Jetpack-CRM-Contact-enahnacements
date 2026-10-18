@@ -1,0 +1,8 @@
+.jpcc-portal { min-width: 0; }
+.jpcc-portal .jpcc-portal-scroll { overflow-x: auto; margin: 1.5em 0; }
+.jpcc-portal table { width: 100%; border-collapse: collapse; font-size: .95em; }
+.jpcc-portal th, .jpcc-portal td { padding: .8em; text-align: left; border-bottom: 1px solid #ddd; vertical-align: top; }
+.jpcc-portal thead { background: #f6f7f7; }
+.jpcc-portal td:nth-child(2), .jpcc-portal td:nth-child(3) { white-space: nowrap; min-width: 7.5em; }
+.jpcc-portal td a { display: inline-block; margin-right: .7em; }
+.jpcc-portal-pagination { display: flex; flex-wrap: wrap; align-items: center; gap: 1em; margin: 1.5em 0; }
