@@ -22,15 +22,27 @@ Use **Check GitHub for updates** on this plugin's row to refresh immediately, or
 
 ### Publishing a new version
 
-1. Change the `Version` header and `JPCRM_COURSES_VERSION` in `jetpack-crm-courses.php`, and the `Stable tag` in `readme.txt`, to the same version, for example `1.0.4`. Add a changelog entry and adjust requirements if needed.
-2. Run the tests and `python3 scripts/build.py --tag v1.0.4`. Commit and push the source changes, including `.github/workflows/release.yml`, to GitHub.
-3. In **GitHub → Releases → Draft a new release**, create tag `v1.0.4` on that commit, write the release notes, and publish it as a stable release marked **Latest**. The first release for this update-enabled version is `v1.0.1`.
-4. Wait for **Actions → Package plugin release** to succeed. It checks PHP syntax and updater behaviour, validates the tag against the plugin version, and attaches `jetpack-crm-courses-1.0.4.zip` plus `jetpack-crm-courses-update.json` to that release. WordPress only offers releases after both assets are present.
+The Client Portal update in this checkout is **1.1.0**. Its GitHub release tag must be **v1.1.0**; a commit message or release title does not set the plugin version.
+
+1. Change the `Version` header and `JPCRM_COURSES_VERSION` in `jetpack-crm-courses.php`, and the `Stable tag` in `readme.txt`, to the same version, for example `1.1.0`. Add a changelog entry and adjust requirements if needed.
+2. Run the tests and `python3 scripts/build.py --tag v1.1.0`. Commit and push the source changes, including `.github/workflows/release.yml`, to GitHub.
+3. In **GitHub → Releases → Draft a new release**, create tag `v1.1.0` on that commit, write the release notes, and publish it as a stable release marked **Latest**. The first release for this update-enabled version is `v1.0.1`.
+4. Wait for **Actions → Package plugin release** to succeed. It checks PHP syntax and updater behaviour, validates the tag against the plugin version, and attaches `jetpack-crm-courses-1.1.0.zip` plus `jetpack-crm-courses-update.json` to that release. WordPress only offers releases after both assets are present.
 5. Check for updates on staging and install the new version there before updating production.
 
 GitHub Actions must be enabled with permission for the workflow's `GITHUB_TOKEN` to write release assets (`contents: write`, declared in the workflow). No personal token or WordPress credentials are needed. This workflow uploads assets **after publishing**; if your repository enables immutable releases, instead build locally, attach both files to the draft, and publish the fully prepared release. The same manual asset-upload process works if Actions is unavailable. A published release should not have its version reused; publish a higher version for fixes.
 
 Ordinary commits, bare tags, drafts and prereleases do not trigger WordPress updates. The updater uses GitHub's **Latest release**, requires a `major.minor.patch` tag (optional `v` prefix), checks asset URLs belong to this repository/tag, and reads the new release's WordPress/PHP requirements from the generated manifest. GitHub's automatic source archives are never used as install packages. Release notes are shown as escaped text in WordPress's plugin details dialog.
+
+### Release tag mismatch (exit code 2)
+
+If the build log reports `Release tag 'v1.0.5' does not match plugin version 1.1.0`, the release tag and source version disagree. Publish a new stable release with tag **v1.1.0**, targeting the commit containing this update, and mark it **Latest**. Re-running the failed v1.0.5 job uses the same tag and source and will fail again. Keep version validation enabled so the ZIP, update manifest and release tag agree.
+
+Before publishing, verify the intended tag locally:
+
+```sh
+python3 scripts/build.py --tag v1.1.0
+```
 
 ## Client Portal
 
