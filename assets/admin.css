@@ -34,6 +34,11 @@
 .jpcc progress { width: 100%; height: 16px; accent-color: #2271b1; }
 .jpcc [hidden] { display: none !important; }
 .jpcc .jpcc-delete { border-color: #b32d2e; color: #b32d2e; }
+.jpcc .jpcc-training-options { display: grid; gap: 12px; margin: 20px 0; }
+.jpcc .jpcc-training-options legend { font-weight: 600; margin-bottom: 12px; }
+.jpcc .jpcc-training-options label { display: flex; align-items: center; gap: 8px; }
+.jpcc .jpcc-training-options input { flex-shrink: 0; }
+.jpcc .jpcc-course-list { margin: 0; }
 .jpcc summary { cursor: pointer; font-weight: 600; }
 .jpcc [data-jpcc-batch-error] { color: #b32d2e; }
 @media (max-width: 782px) { .jpcc .jpcc-panel { padding: 16px; } .jpcc .jpcc-filters .jpcc-field { flex: 1 1 100%; } }

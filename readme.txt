@@ -4,7 +4,7 @@ Requires at least: 6.5
 Tested up to: 7.1
 Requires PHP: 7.4
 Requires Plugins: zero-bs-crm
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -24,6 +24,12 @@ MailPoet recipients must already be active subscribers. Composition and sending 
 4. Use Courses to filter expiry dates and prepare a MailPoet audience.
 
 == Changelog ==
+
+= 1.2.0 =
+* Add a Training and Assessing contact tab with eligibility checkboxes for configured course types.
+* Add Courses > Trainer register with combined course, location and name/email filters, and one result per trainer.
+* Use the contact's main address for location searches; preserve archived selections while excluding them from the register.
+* Protect eligibility saves with CRM permissions, contact-specific nonces, transactions and stale-form checks.
 
 = 1.1.0 =
 * Add Training & certificates to an active Client Portal, with private viewing and downloads for the logged-in contact only.

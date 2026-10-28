@@ -1,10 +1,11 @@
 /* global jpccAdmin */
 (() => {
   'use strict';
-  if (new URLSearchParams(window.location.search).get('jpcc_tab') === 'courses') {
+  const contactTab = {courses: 'jpcc-courses', training: 'jpcc-training'}[new URLSearchParams(window.location.search).get('jpcc_tab')];
+  if (typeof contactTab === 'string') {
     window.jQuery(() => {
       const tabs = window.jQuery('#zbs-vitals-box .tabular.menu .item');
-      if (tabs.length && typeof tabs.tab === 'function') tabs.tab('change tab', 'jpcc-courses');
+      if (tabs.length && typeof tabs.tab === 'function') tabs.tab('change tab', contactTab);
     });
   }
   document.querySelectorAll('[data-jpcc-dropzone]').forEach((zone) => {
@@ -67,7 +68,7 @@
     showSelection();
   });
   document.querySelectorAll('.jpcc-form').forEach((form) => {
-    if (form.querySelector('input[name="action"]')?.value !== 'jpcc_save_record') return;
+    if (!['jpcc_save_record', 'jpcc_save_training'].includes(form.querySelector('input[name="action"]')?.value)) return;
     const buttons = [...form.querySelectorAll('button[type="submit"], input[type="submit"]')];
     const labels = buttons.map((button) => button.tagName === 'INPUT' ? button.value : button.textContent);
     const reset = () => {

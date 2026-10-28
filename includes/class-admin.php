@@ -6,6 +6,7 @@ defined( 'ABSPATH' ) || exit;
 final class Admin {
 	public static function url( $args = array() ) {
 		if ( 'types' === ( $args['view'] ?? '' ) ) { $args['page'] = 'jpcc-course-types'; unset( $args['view'] ); }
+		if ( 'trainers' === ( $args['view'] ?? '' ) ) { $args['page'] = 'jpcc-trainers'; unset( $args['view'] ); }
 		return add_query_arg( array_merge( array( 'page' => 'jpcc-courses' ), $args ), admin_url( 'admin.php' ) );
 	}
 
@@ -13,6 +14,7 @@ final class Admin {
 		if ( ! CRM::available() ) { return; }
 		add_menu_page( __( 'Courses', 'jpcrm-courses' ), __( 'Courses', 'jpcrm-courses' ), 'admin_zerobs_view_customers', 'jpcc-courses', array( __CLASS__, 'page' ), 'dashicons-welcome-learn-more', 58 );
 		add_submenu_page( 'jpcc-courses', __( 'Course register', 'jpcrm-courses' ), __( 'Course register', 'jpcrm-courses' ), 'admin_zerobs_view_customers', 'jpcc-courses', array( __CLASS__, 'page' ) );
+		add_submenu_page( 'jpcc-courses', __( 'Trainer register', 'jpcrm-courses' ), __( 'Trainer register', 'jpcrm-courses' ), 'admin_zerobs_view_customers', 'jpcc-trainers', array( __CLASS__, 'page' ) );
 		add_submenu_page( 'jpcc-courses', __( 'Course types', 'jpcrm-courses' ), __( 'Course types', 'jpcrm-courses' ), 'admin_zerobs_manage_options', 'jpcc-course-types', array( __CLASS__, 'page' ) );
 		add_submenu_page( 'jpcc-courses', __( 'Client Portal', 'jpcrm-courses' ), __( 'Client Portal', 'jpcrm-courses' ), 'admin_zerobs_manage_options', 'jpcc-client-portal', array( 'JPCRM_Courses\Portal', 'settings_page' ) );
 	}
@@ -24,7 +26,7 @@ final class Admin {
 
 	public static function assets() {
 		$page = Plugin::input( 'page', '', $_GET );
-		if ( ! in_array( $page, array( 'jpcc-courses', 'jpcc-course-types', 'zbs-add-edit' ), true ) ) { return; }
+		if ( ! in_array( $page, array( 'jpcc-courses', 'jpcc-course-types', 'jpcc-trainers', 'zbs-add-edit' ), true ) ) { return; }
 		wp_enqueue_style( 'jpcc-admin', plugins_url( 'assets/admin.css', JPCRM_COURSES_FILE ), array(), JPCRM_COURSES_VERSION );
 		wp_enqueue_script( 'jpcc-admin', plugins_url( 'assets/admin.js', JPCRM_COURSES_FILE ), array( 'jquery' ), JPCRM_COURSES_VERSION, true );
 		wp_localize_script( 'jpcc-admin', 'jpccAdmin', array( 'ajaxUrl' => admin_url( 'admin-ajax.php' ), 'nonce' => wp_create_nonce( 'jpcc_audience_batch' ),
@@ -41,6 +43,7 @@ final class Admin {
 	public static function contact_tab( $tabs, $contact_id ) {
 		if ( ! CRM::contact( $contact_id ) ) { return $tabs; }
 		$tabs[] = array( 'id' => 'jpcc-courses', 'name' => __( 'Courses & certificates', 'jpcrm-courses' ), 'contentaction' => array( __CLASS__, 'contact_content' ) );
+		$tabs[] = array( 'id' => 'jpcc-training', 'name' => __( 'Training and Assessing', 'jpcrm-courses' ), 'contentaction' => array( __CLASS__, 'training_content' ) );
 		return $tabs;
 	}
 
@@ -68,14 +71,17 @@ final class Admin {
 
 	public static function page() {
 		if ( ! CRM::available() || ! CRM::can_view() ) { wp_die( esc_html__( 'CRM contact access is required.', 'jpcrm-courses' ) ); }
-		$view = 'jpcc-course-types' === Plugin::input( 'page', '', $_GET ) ? 'types' : Plugin::input( 'view', '', $_GET );
-		$titles = array( 'types' => __( 'Course types', 'jpcrm-courses' ), 'record' => __( 'Course record', 'jpcrm-courses' ), 'audience' => __( 'Send an Email', 'jpcrm-courses' ) );
-		echo '<div class="wrap jpcc"><h1>' . esc_html( $titles[ $view ] ?? __( 'Course register', 'jpcrm-courses' ) ) . '</h1><p class="jpcc-intro">' . esc_html__( 'Course history, renewal dates and the people who need a reminder.', 'jpcrm-courses' ) . '</p>';
+		$views = array( 'jpcc-course-types' => 'types', 'jpcc-trainers' => 'trainers' );
+		$view = $views[ Plugin::input( 'page', '', $_GET ) ] ?? Plugin::input( 'view', '', $_GET );
+		$titles = array( 'types' => __( 'Course types', 'jpcrm-courses' ), 'trainers' => __( 'Trainer register', 'jpcrm-courses' ), 'record' => __( 'Course record', 'jpcrm-courses' ), 'audience' => __( 'Send an Email', 'jpcrm-courses' ) );
+		$intro = 'trainers' === $view ? __( 'Find eligible trainers by course and contact location.', 'jpcrm-courses' ) : __( 'Course history, renewal dates and the people who need a reminder.', 'jpcrm-courses' );
+		echo '<div class="wrap jpcc"><h1>' . esc_html( $titles[ $view ] ?? __( 'Course register', 'jpcrm-courses' ) ) . '</h1><p class="jpcc-intro">' . esc_html( $intro ) . '</p>';
 		if ( Plugin::input( 'saved', '', $_GET ) ) { echo '<div class="notice notice-success"><p>' . esc_html__( 'Saved successfully.', 'jpcrm-courses' ) . '</p></div>'; }
 		if ( Plugin::input( 'deleted', '', $_GET ) ) { echo '<div class="notice notice-success"><p>' . esc_html__( 'Course record and certificate deleted.', 'jpcrm-courses' ) . '</p></div>'; }
 		try {
 			switch ( $view ) {
 				case 'types': self::types_page(); break;
+				case 'trainers': self::trainers_page(); break;
 				case 'record': self::record_page(); break;
 				case 'audience': self::audience_page(); break;
 				default: self::register_page();
@@ -180,6 +186,72 @@ final class Admin {
 			echo '</td></tr>';
 		}
 		echo '</tbody></table></div>';
+	}
+
+	public static function training_content( $contact_id ) {
+		echo '<div class="jpcc">';
+		try {
+			$contact = CRM::require_contact( $contact_id );
+			$selected = Trainers::selected( $contact_id );
+			$types = Store::types();
+			$can_edit = CRM::can_edit();
+			if ( Plugin::input( 'jpcc_training_saved', '', $_GET ) ) { echo '<div class="jpcc-success" role="status"><p>' . esc_html__( 'Training eligibility saved.', 'jpcrm-courses' ) . '</p></div>'; }
+			echo '<h3>' . esc_html__( 'Training and Assessing', 'jpcrm-courses' ) . '</h3><p>' . esc_html__( 'Select the course types this contact is eligible to train and assess. These selections determine their entry in the Trainer register.', 'jpcrm-courses' ) . '</p>';
+			echo '<p><strong>' . esc_html__( 'Contact location:', 'jpcrm-courses' ) . '</strong> ' . esc_html( Trainers::location( $contact ) ?: __( 'Not set', 'jpcrm-courses' ) ) . '<br><span class="description">' . esc_html__( 'Location searches use the city, state/county, postcode and country in this contact’s main address.', 'jpcrm-courses' ) . '</span></p>';
+			if ( ! $types ) {
+				echo '<p>' . esc_html__( 'Configure course types before assigning training eligibility.', 'jpcrm-courses' ) . '</p>';
+				if ( CRM::can_configure() ) { self::button( __( 'Configure course types', 'jpcrm-courses' ), self::url( array( 'view' => 'types' ) ) ); }
+			} else {
+				if ( $can_edit ) {
+					self::post_form( 'save_training', 'jpcc_save_training_' . $contact_id );
+					self::hidden( 'contact_id', $contact_id );
+					self::hidden( 'selection_version', Trainers::version( $selected ) );
+				}
+				echo '<fieldset class="jpcc-training-options"><legend>' . esc_html__( 'Eligible course types', 'jpcrm-courses' ) . '</legend>';
+				foreach ( $types as $type ) {
+					$is_selected = in_array( (int) $type['id'], $selected, true );
+					$disabled = ! $can_edit || ( ! $type['active'] && ! $is_selected );
+					echo '<label><input type="checkbox" name="course_type_ids[]" value="' . esc_attr( $type['id'] ) . '" ' . checked( $is_selected, true, false ) . ' ' . disabled( $disabled, true, false ) . '> ' . esc_html( $type['name'] . ( $type['active'] ? '' : __( ' (archived)', 'jpcrm-courses' ) ) ) . '</label>';
+				}
+				echo '</fieldset><p class="description">' . esc_html__( 'Archived selections are retained but excluded from the Trainer register. Clear all selections to remove this contact from the register.', 'jpcrm-courses' ) . '</p>';
+				if ( $can_edit ) { submit_button( __( 'Save training eligibility', 'jpcrm-courses' ) ); echo '</form>'; }
+			}
+			echo '<p>'; self::button( __( 'Open Trainer register', 'jpcrm-courses' ), self::url( array( 'view' => 'trainers' ) ) ); echo '</p>';
+		} catch ( \Throwable $e ) { self::error( $e->getMessage() ); }
+		echo '</div>';
+	}
+
+	public static function trainers_page() {
+		$filters = Trainers::filters( $_GET );
+		$result = Trainers::query( $filters, absint( Plugin::input( 'paged', '1', $_GET ) ) );
+		$types = array( '' => __( 'All active courses', 'jpcrm-courses' ) );
+		foreach ( Store::types( true ) as $type ) { $types[ $type['id'] ] = $type['name']; }
+		if ( $filters['course_type_id'] && ! isset( $types[ $filters['course_type_id'] ] ) ) { $types[ $filters['course_type_id'] ] = __( 'Unavailable course type', 'jpcrm-courses' ); }
+		echo '<form method="get" class="jpcc-panel jpcc-filters">';
+		self::hidden( 'page', 'jpcc-trainers' );
+		self::select( __( 'Course type', 'jpcrm-courses' ), 'course_type_id', $filters['course_type_id'], $types );
+		self::field( __( 'Location', 'jpcrm-courses' ), 'location', $filters['location'], 'search', 'placeholder="' . esc_attr__( 'City, state, postcode or country', 'jpcrm-courses' ) . '"' );
+		self::field( __( 'Trainer name or email', 'jpcrm-courses' ), 'search', $filters['search'], 'search' );
+		echo '<div class="jpcc-filter-footer"><button class="button button-primary">' . esc_html__( 'Search trainers', 'jpcrm-courses' ) . '</button> <a href="' . esc_url( self::url( array( 'view' => 'trainers' ) ) ) . '">' . esc_html__( 'Clear filters', 'jpcrm-courses' ) . '</a></div></form>';
+		echo '<p>' . esc_html( sprintf( _n( '%s trainer', '%s trainers', $result['total'], 'jpcrm-courses' ), number_format_i18n( $result['total'] ) ) ) . ' · ' . esc_html__( 'Location uses each contact’s main address. Eligibility is managed in their Training and Assessing tab.', 'jpcrm-courses' ) . '</p>';
+		echo '<div class="jpcc-table-scroll"><table class="widefat striped jpcc-table"><thead><tr>';
+		foreach ( array( __( 'Trainer', 'jpcrm-courses' ), __( 'Location', 'jpcrm-courses' ), __( 'Eligible course types', 'jpcrm-courses' ), __( 'Actions', 'jpcrm-courses' ) ) as $heading ) { echo '<th scope="col">' . esc_html( $heading ) . '</th>'; }
+		echo '</tr></thead><tbody>';
+		if ( ! $result['rows'] ) { echo '<tr><td colspan="4" class="jpcc-empty">' . esc_html__( 'No trainers found. Adjust your filters or select eligible course types in a contact’s Training and Assessing tab.', 'jpcrm-courses' ) . '</td></tr>'; }
+		foreach ( $result['rows'] as $row ) {
+			echo '<tr><td><a href="' . esc_url( CRM::link( $row['id'] ) ) . '">' . esc_html( CRM::name( $row ) ) . '</a><small>' . esc_html( $row['email'] ) . '</small></td><td>' . esc_html( Trainers::location( $row ) ?: __( 'Not set', 'jpcrm-courses' ) ) . '</td><td><ul class="jpcc-course-list">';
+			foreach ( $row['courses'] as $course ) { echo '<li>' . esc_html( $course ) . '</li>'; }
+			echo '</ul></td><td><a href="' . esc_url( CRM::training_link( $row['id'] ) ) . '">' . esc_html( CRM::can_edit() ? __( 'Edit eligibility', 'jpcrm-courses' ) : __( 'View eligibility', 'jpcrm-courses' ) ) . '</a></td></tr>';
+		}
+		echo '</tbody></table></div>';
+		if ( $result['pages'] > 1 ) {
+			echo '<nav class="jpcc-pagination" aria-label="' . esc_attr__( 'Trainer pages', 'jpcrm-courses' ) . '">';
+			$args = array_merge( array( 'view' => 'trainers' ), $filters );
+			if ( $result['page'] > 1 ) { self::button( __( 'Previous', 'jpcrm-courses' ), self::url( $args + array( 'paged' => $result['page'] - 1 ) ) ); }
+			echo '<span>' . esc_html( sprintf( __( 'Page %1$d of %2$d', 'jpcrm-courses' ), $result['page'], $result['pages'] ) ) . '</span> ';
+			if ( $result['page'] < $result['pages'] ) { self::button( __( 'Next', 'jpcrm-courses' ), self::url( $args + array( 'paged' => $result['page'] + 1 ) ) ); }
+			echo '</nav>';
+		}
 	}
 
 	public static function types_page() {

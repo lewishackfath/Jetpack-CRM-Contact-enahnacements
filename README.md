@@ -5,7 +5,7 @@ A standalone WordPress plugin for **Jetpack CRM 6.8.5**, with **MailPoet** audie
 ## Install
 
 1. In a staging copy of your WordPress site, activate Jetpack CRM 6.8.5 and MailPoet.
-2. Upload `dist/jetpack-crm-courses-1.1.0.zip` through **Plugins → Add Plugin → Upload Plugin**, then activate it. If replacing an existing installation, choose **Replace current with uploaded**.
+2. Upload `dist/jetpack-crm-courses-1.2.0.zip` through **Plugins → Add Plugin → Upload Plugin**, then activate it. If replacing an existing installation, choose **Replace current with uploaded**.
 3. Open **Courses → Course types**. Add **First Aid**, valid for **1 year**.
 4. Open a CRM contact, select **Courses & certificates**, and click **Add course date**.
 5. Select the course, enter its date, and upload a PDF, JPEG or PNG certificate. The expiry is calculated when saved. The form stays on the contact, and saving returns to its **Courses & certificates** tab.
@@ -22,12 +22,12 @@ Use **Check GitHub for updates** on this plugin's row to refresh immediately, or
 
 ### Publishing a new version
 
-The Client Portal update in this checkout is **1.1.0**. Its GitHub release tag must be **v1.1.0**; a commit message or release title does not set the plugin version.
+The Trainer register update in this checkout is **1.2.0**. Its GitHub release tag must be **v1.2.0**; a commit message or release title does not set the plugin version.
 
-1. Change the `Version` header and `JPCRM_COURSES_VERSION` in `jetpack-crm-courses.php`, and the `Stable tag` in `readme.txt`, to the same version, for example `1.1.0`. Add a changelog entry and adjust requirements if needed.
-2. Run the tests and `python3 scripts/build.py --tag v1.1.0`. Commit and push the source changes, including `.github/workflows/release.yml`, to GitHub.
-3. In **GitHub → Releases → Draft a new release**, create tag `v1.1.0` on that commit, write the release notes, and publish it as a stable release marked **Latest**. The first release for this update-enabled version is `v1.0.1`.
-4. Wait for **Actions → Package plugin release** to succeed. It checks PHP syntax and updater behaviour, validates the tag against the plugin version, and attaches `jetpack-crm-courses-1.1.0.zip` plus `jetpack-crm-courses-update.json` to that release. WordPress only offers releases after both assets are present.
+1. Change the `Version` header and `JPCRM_COURSES_VERSION` in `jetpack-crm-courses.php`, and the `Stable tag` in `readme.txt`, to the same version, for example `1.2.0`. Add a changelog entry and adjust requirements if needed.
+2. Run the tests and `python3 scripts/build.py --tag v1.2.0`. Commit and push the source changes, including `.github/workflows/release.yml`, to GitHub.
+3. In **GitHub → Releases → Draft a new release**, create tag `v1.2.0` on that commit, write the release notes, and publish it as a stable release marked **Latest**. The first release for this update-enabled version is `v1.0.1`.
+4. Wait for **Actions → Package plugin release** to succeed. It checks PHP syntax and updater behaviour, validates the tag against the plugin version, and attaches `jetpack-crm-courses-1.2.0.zip` plus `jetpack-crm-courses-update.json` to that release. WordPress only offers releases after both assets are present.
 5. Check for updates on staging and install the new version there before updating production.
 
 GitHub Actions must be enabled with permission for the workflow's `GITHUB_TOKEN` to write release assets (`contents: write`, declared in the workflow). No personal token or WordPress credentials are needed. This workflow uploads assets **after publishing**; if your repository enables immutable releases, instead build locally, attach both files to the draft, and publish the fully prepared release. The same manual asset-upload process works if Actions is unavailable. A published release should not have its version reused; publish a higher version for fixes.
@@ -36,12 +36,12 @@ Ordinary commits, bare tags, drafts and prereleases do not trigger WordPress upd
 
 ### Release tag mismatch (exit code 2)
 
-If the build log reports `Release tag 'v1.0.5' does not match plugin version 1.1.0`, the release tag and source version disagree. Publish a new stable release with tag **v1.1.0**, targeting the commit containing this update, and mark it **Latest**. Re-running the failed v1.0.5 job uses the same tag and source and will fail again. Keep version validation enabled so the ZIP, update manifest and release tag agree.
+If the build log reports `Release tag 'v1.0.5' does not match plugin version 1.2.0`, the release tag and source version disagree. Publish a new stable release with tag **v1.2.0**, targeting the commit containing this update, and mark it **Latest**. Re-running the failed v1.0.5 job uses the same tag and source and will fail again. Keep version validation enabled so the ZIP, update manifest and release tag agree.
 
 Before publishing, verify the intended tag locally:
 
 ```sh
-python3 scripts/build.py --tag v1.1.0
+python3 scripts/build.py --tag v1.2.0
 ```
 
 ## Client Portal
@@ -89,12 +89,22 @@ Up to 5,000 matching course records can be prepared at once. Narrow the course o
 - The register supports course, contact name/email, expiry month, inclusive date range, current/expired/30-day/no-expiry status, and latest-record filters. Month and explicit date range are mutually exclusive.
 - “Latest” means greatest course date, with record ID breaking same-date ties; future-dated records also count as later records.
 
+## Training and Assessing
+
+Open a contact's **Training and Assessing** tab and select each course type they are eligible to train and assess, then click **Save training eligibility**. The list comes from **Courses → Course types**. Eligibility is a single selection per course, managed by staff independently of certificate history; holding a certificate does not automatically qualify a trainer.
+
+Open **Courses → Trainer register** to search by course type, location, and trainer name or email. Filters combine, and each trainer appears once with their email, location, eligible active courses, and a link back to their eligibility tab. Location searches match text in the contact's **main address** city, state/county, postcode and country; update that address to change the trainer's location. This is text matching, not distance or travel-area matching.
+
+Contacts appear only when at least one active course type is selected. Clearing all checkboxes removes them from the register. Archived course selections are retained and can be removed, but cannot be newly assigned and do not appear in the register. Reactivating the type restores its selected trainers. Renames appear automatically. Read-only CRM viewers can inspect eligibility and search the register; contact editors can change selections. Saves return to the same tab and reject stale forms after another editor changes eligibility.
+
+The upgrade adds a `jpcc_trainer_courses` table automatically without changing existing course records. Include it in database backups. Eligibility is staff-only and is not exposed or editable in the Client Portal.
+
 ## Permissions and certificate storage
 
 | Action | Required WordPress capabilities |
 | --- | --- |
-| View register and certificates | `admin_zerobs_view_customers` |
-| Add, edit, replace or delete records | View permission plus `admin_zerobs_customers` |
+| View registers, training eligibility and certificates | `admin_zerobs_view_customers` |
+| Add, edit, replace or delete records; change training eligibility | View permission plus `admin_zerobs_customers` |
 | View/download own certificates in the Client Portal | Logged-in user matching an enabled CRM contact, with active Client Portal and valid nonce |
 | Configure portal read-only fields | `admin_zerobs_manage_options` |
 | Configure course types | `admin_zerobs_manage_options` and contact-view access to the admin page |
@@ -109,7 +119,7 @@ Certificates are stored as base64 data in a separate database table, **not in th
 - Deactivating or deleting the plugin preserves its tables and certificates. Back up the database before upgrades. Reinstalling the plugin restores access to preserved records.
 - Deleting a course record removes its certificate. Replacing a certificate removes the previous file after a successful save.
 - Course activity remains in the contact's CRM log after a course record is deleted or this plugin is deactivated. These are standard CRM notes, governed by CRM's normal note permissions and retention.
-- Contact deletion and CRM contact merging do not currently cascade or transfer course records. Records whose contact no longer exists are retained in the database but omitted from the register and inaccessible through the certificate endpoint. Preserve/reassign records before merging or removing contacts; there is no orphan-recovery UI in this release.
+- Contact deletion and CRM contact merging do not currently cascade or transfer course records or trainer eligibility. Records whose contact no longer exists are retained in the database but omitted from the register and inaccessible through the certificate endpoint. Preserve/reassign records and eligibility before merging or removing contacts; there is no orphan-recovery UI in this release.
 - These custom tables are not included in Jetpack CRM's standard CSV exports or WordPress personal-data export/erasure tools. Manage course data explicitly and include the tables in backups/retention procedures.
 - No automatic reminders, expiry cron jobs, course CSV import or native CRM segment conditions are included.
 - For MailPoet setup, sender authentication, test delivery and actual sending, use MailPoet's normal configuration. Production email delivery has not been tested by this project.

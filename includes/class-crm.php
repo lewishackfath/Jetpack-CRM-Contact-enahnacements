@@ -36,6 +36,9 @@ final class CRM {
 	public static function courses_link( $id, $args = array() ) {
 		return add_query_arg( array_merge( array( 'jpcc_tab' => 'courses' ), $args ), wp_specialchars_decode( self::link( $id ), ENT_QUOTES ) );
 	}
+	public static function training_link( $id, $args = array() ) {
+		return add_query_arg( array_merge( array( 'jpcc_tab' => 'training' ), $args ), wp_specialchars_decode( self::link( $id ), ENT_QUOTES ) );
+	}
 
 	/** Use the same SQL ownership restrictions as the CRM DAL. */
 	public static function scope() {

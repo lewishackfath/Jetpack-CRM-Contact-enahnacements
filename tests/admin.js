@@ -56,4 +56,23 @@ expect(!first.defaultPrevented && save.disabled && save.value === jpccAdmin.savi
 expect(form.dispatch('submit').defaultPrevented, 'Further submissions are blocked while saving');
 window.dispatch('pageshow');
 expect(!save.disabled && save.value === 'Save course record' && !form.dataset.submitting, 'Returning with the browser Back button restores the form controls');
+for (const [query, expected] of [['courses', 'jpcc-courses'], ['training', 'jpcc-training'], ['unknown', null], ['toString', null]]) {
+  const testWindow = new Element();
+  testWindow.location = {search: `?jpcc_tab=${query}`};
+  let activeTab = null;
+  testWindow.jQuery = arg => typeof arg === 'function' ? arg() : {length: 1, tab: (action, name) => { activeTab = name; }};
+  const trainingSave = {tagName: 'INPUT', value: 'Save training eligibility', disabled: false};
+  const trainingForm = new Element();
+  trainingForm.querySelector = () => ({value: 'jpcc_save_training'});
+  trainingForm.querySelectorAll = () => [trainingSave];
+  const testDocument = {querySelectorAll: selector => selector === '.jpcc-form' ? [trainingForm] : [], querySelector: () => null};
+  runInNewContext(readFileSync(require('node:path').join(__dirname, '../assets/admin.js'), 'utf8'), {document: testDocument, window: testWindow, jpccAdmin, URLSearchParams});
+  expect(activeTab === expected, `Contact deep link selects the correct tab for ${query}`);
+  if (query === 'training') {
+    expect(!trainingForm.dispatch('submit').defaultPrevented && trainingSave.disabled, 'Training eligibility submission disables Save');
+    expect(trainingForm.dispatch('submit').defaultPrevented, 'Repeated training submission is blocked');
+    testWindow.dispatch('pageshow');
+    expect(!trainingSave.disabled && !trainingForm.dataset.submitting && trainingSave.value === 'Save training eligibility', 'Back navigation restores training form controls');
+  }
+}
 console.log(`\n${checks} browser-event checks passed.`);

@@ -24,6 +24,7 @@ final class Store {
 		$types = self::table( 'types' );
 		$records = self::table( 'records' );
 		$certificates = self::table( 'certificates' );
+		$trainer_courses = self::table( 'trainer_courses' );
 		dbDelta( "CREATE TABLE $types (
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 			name varchar(190) NOT NULL,
@@ -62,7 +63,13 @@ final class Store {
 			data_base64 longtext NOT NULL,
 			PRIMARY KEY  (id)
 		) ENGINE=InnoDB $charset;" );
-		foreach ( array( $types, $records, $certificates ) as $table ) {
+		dbDelta( "CREATE TABLE $trainer_courses (
+			contact_id bigint(20) unsigned NOT NULL,
+			course_type_id bigint(20) unsigned NOT NULL,
+			PRIMARY KEY  (contact_id,course_type_id),
+			KEY course_contact (course_type_id,contact_id)
+		) ENGINE=InnoDB $charset;" );
+		foreach ( array( $types, $records, $certificates, $trainer_courses ) as $table ) {
 			if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $wpdb->esc_like( $table ) ) ) !== $table ) {
 				throw new \RuntimeException( __( 'Could not create the course tables. Check database permissions.', 'jpcrm-courses' ) );
 			}

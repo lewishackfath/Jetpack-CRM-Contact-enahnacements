@@ -13,7 +13,7 @@ final class Plugin {
 		add_action( 'admin_enqueue_scripts', array( 'JPCRM_Courses\Admin', 'assets' ) );
 		add_filter( 'jetpack-crm-contact-vital-tabs', array( 'JPCRM_Courses\Admin', 'contact_tab' ), 10, 2 );
 		add_filter( 'zbs-contacts-menu', array( 'JPCRM_Courses\Admin', 'crm_menu' ) );
-		foreach ( array( 'save_type', 'save_record', 'delete_record', 'certificate', 'audience' ) as $action ) {
+		foreach ( array( 'save_type', 'save_record', 'save_training', 'delete_record', 'certificate', 'audience' ) as $action ) {
 			add_action( 'admin_post_jpcc_' . $action, array( __CLASS__, $action ) );
 		}
 		add_action( 'wp_ajax_jpcc_audience_batch', array( __CLASS__, 'audience_batch' ) );
@@ -69,6 +69,17 @@ final class Plugin {
 			$id = Store::save_record( $data, Certificates::upload( $_FILES['certificate'] ?? null ) );
 			$record = Store::record( $id );
 			wp_safe_redirect( CRM::courses_link( $record['contact_id'], array( 'jpcc_saved' => 1 ) ), 303 );
+			exit;
+		} catch ( \Throwable $e ) { self::fail( $e ); }
+	}
+
+	public static function save_training() {
+		$contact_id = absint( self::input( 'contact_id' ) );
+		self::authorize( 'jpcc_save_training_' . $contact_id, CRM::can_edit() );
+		try {
+			$ids = isset( $_POST['course_type_ids'] ) ? wp_unslash( $_POST['course_type_ids'] ) : array();
+			Trainers::save( $contact_id, $ids, self::input( 'selection_version' ) );
+			wp_safe_redirect( CRM::training_link( $contact_id, array( 'jpcc_training_saved' => 1 ) ), 303 );
 			exit;
 		} catch ( \Throwable $e ) { self::fail( $e ); }
 	}

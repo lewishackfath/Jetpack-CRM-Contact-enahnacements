@@ -68,3 +68,15 @@ JPCC_TEST_WP_ROOT=/absolute/path/to/test-wordpress php tests/portal.php
 This suite needs Jetpack CRM 6.8.5 and PHP Curl/DOM, but not MailPoet. It creates real customers, WordPress subscriber and native CRM customer accounts, custom fields, courses and certificates, then uses real sessions to test the native portal endpoint, pagination, certificate bytes/headers, anonymous access, cross-contact attempts with valid nonces, disabled access, forbidden mutations, settings authorization and CSRF. It checks native details rendering and submits forged updates to built-in, secondary-address, custom text and checkbox fields, then verifies that locked values remain unchanged while unlocked fields save. Settings/custom-field configuration and temporary sessions are restored afterward; contact/course fixtures remain for inspection.
 
 This release was exercised on WordPress 6.8.3, Jetpack CRM 6.8.5, PHP 8.5.8 and MariaDB 12.3.2. Client Portal Pro and third-party template overrides are not installed in that test environment.
+
+## Trainer register
+
+With Jetpack CRM active on the marked disposable localhost site and its HTTP server running (MailPoet is not required):
+
+```sh
+JPCC_TEST_WP_ROOT=/absolute/path/to/test-wordpress php tests/trainers.php
+```
+
+Checks schema upgrades, selection persistence and clearing, unique trainers, combined course/location/name/email filters, address changes, pagination, archived types, stale-form protection, transaction rollback, escaped output, admin tab/menu rendering, HTTP redirects, contact-specific nonces, and viewer/subscriber/anonymous permissions. Contact, course-type and user fixtures remain for inspection; sessions are removed. It simulates a prior schema version before upgrading and requires an InnoDB CRM contacts table. Jetpack CRM 6.8.5 currently shares contact visibility; the register uses its ownership helpers for compatibility.
+
+The standalone `node tests/admin.js` suite also checks training-tab deep links and submit/Back-button handling.
